@@ -7,8 +7,11 @@ const db = require('../data/db-config');
 
 server.use(express.json());
 
-server.use('/api/recipe', (req, res, next) => {
-  // 
+server.get('/api/recipes', async (req, res, next) => {
+  await db('recipes');
+  res.json({
+    message: "it's working"
+  });
 });
 
 server.use((err, req, res, next) => {
