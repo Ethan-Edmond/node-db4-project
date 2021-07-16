@@ -29,23 +29,45 @@ server.get('/api/recipes/:id', async (req, res, next) => {
           .leftJoin('ingredients', 'step_ingredients.ingredient_id', 'ingredients.ingredient_id')
           .where({'recipes.recipe_id': req.params.id})
           .orderBy('step_number');
-    const ripRecipe = queryRes.reduce((acc, curr) => {
-      const currStep = null;
-      return {
-        ...acc,
-        recipe_id: curr.recipe_id,
-        recipe_name: curr.recipe_name,
-        created_at: curr.created_at,
-        steps: [...acc.steps, currStep]
-      };
-    }, {
+
+    const returnVal = {
       recipe_id: null,
       recipe_name: null,
       created_at: null,
       steps: []
+    };
+
+    const getSingle = (keyString) => queryRes.find(elem => elem[keyString])[keyString];
+    returnVal.recipe_id = getSingle("recipe_id");
+    returnVal.recipe_name = getSingle("recipe_name");
+    returnVal.created_at = getSingle("created_at");
+
+    const formatIngredients = ({ingredient_name, quantity}) => {
+      return ingredient_name !== null ?
+        { ingredient_name, quantity } :
+      null;
+    };
+
+    const stepSet = new Set(queryRes.map(elem => elem.step_id));
+    stepSet.forEach(step_id => {
+
+      const found = queryRes.find(elem => elem.step_id === step_id);
+
+      const stepRows = queryRes
+            .filter(elem => elem.step_id === step_id)
+            .map(formatIngredients)
+            .filter(elem => elem);
+
+      returnVal.steps.push({
+        step_id,
+        step_number: found.step_number,
+        instructions: found.instructions,
+        ingredients: stepRows
+      });
+
     });
 
-    res.json(ripRecipe);
+    res.json(returnVal);
   } catch (err) {
     next(err);
   }
