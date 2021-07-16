@@ -1,9 +1,9 @@
 const db = require('../../data/db-config');
 
-exports.getById = async (id) => {
+exports.getRecipeById = async (id) => {
   const queryRes = await db('recipes')
     .select(
-      'recipes.*', 'steps.*', 'ingredient_name', 'quantity'
+      'recipes.*', 'steps.*', 'ingredients.*', 'quantity'
     )
     .leftJoin('steps', 'recipes.recipe_id', 'steps.recipe_id')
     .leftJoin('step_ingredients', 'steps.step_id', 'step_ingredients.step_id')
@@ -11,40 +11,29 @@ exports.getById = async (id) => {
     .where({'recipes.recipe_id': id})
     .orderBy('step_number');
 
-  const returnVal = {
-    recipe_id: null,
-    recipe_name: null,
-    created_at: null,
-    steps: []
+  const firstOrNone = queryRes.find(elem => elem);
+  return {
+    recipe_id: firstOrNone.recipe_id,
+    recipe_name: firstOrNone.recipe_name,
+    created_at: firstOrNone.created_at,
+    steps: queryRes.reduceRight((acc, curr, index) => {
+      const ingredient = {
+        ingredient_id: curr.ingredient_id,
+        ingredient_name: curr.ingredient_name,
+        quantity: curr.quantity
+      };
+
+      if (acc.find(elem => elem.step_id === curr.step_id)) {
+        curr.ingredient_id !== null && acc[0].ingredients.unshift(ingredient);
+        return acc;
+      } else {
+        return [{
+          step_id: curr.step_id,
+          step_number: curr.step_number,
+          instructions: curr.instructions,
+          ingredients: curr.ingredient_id !== null ? [ingredient] : []
+        }, ...acc];
+      }
+    }, [])
   };
-
-  const getSingle = (keyString) => queryRes.find(elem => elem[keyString])[keyString];
-  returnVal.recipe_id = getSingle("recipe_id");
-  returnVal.recipe_name = getSingle("recipe_name");
-  returnVal.created_at = getSingle("created_at");
-
-  const formatIngredients = ({ingredient_name, quantity}) => {
-    return ingredient_name !== null ?
-      { ingredient_name, quantity } :
-    null;
-  };
-
-  const stepSet = new Set(queryRes.map(elem => elem.step_id));
-  stepSet.forEach(step_id => {
-    const found = queryRes.find(elem => elem.step_id === step_id);
-
-    const stepRows = queryRes
-          .filter(elem => elem.step_id === step_id)
-          .map(formatIngredients)
-          .filter(elem => elem);
-
-    returnVal.steps.push({
-      step_id,
-      step_number: found.step_number,
-      instructions: found.instructions,
-      ingredients: stepRows
-    });
-  });
-
-  return returnVal;
 };

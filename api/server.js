@@ -2,12 +2,12 @@ const express = require('express');
 
 const server = express();
 
-const {getById} = require('./recipes/model');
+const {getRecipeById} = require('./recipes/model');
 
 server.use(express.json());
 
 server.get('/api/recipes/:id', (req, res, next) => {
-  getById(req.params.id)
+  getRecipeById(req.params.id)
     .then(recipe => {
       res.json(recipe);
     })
